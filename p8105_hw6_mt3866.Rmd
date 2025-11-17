@@ -4,3 +4,16 @@ output: github_document
 date: "2025-11-17"
 ---
 
+Load libraries
+```{r}
+library(tidyverse)
+```
+
+
+Import Data and create city_state column:
+```{r}
+  homicides = read_csv("homicide-data.csv")|>
+  janitor::clean_names()|>
+  mutate(city_state = str_c(city, state, sep = ","))
+```
+
