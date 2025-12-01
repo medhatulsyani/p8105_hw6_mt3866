@@ -9,11 +9,16 @@ Load libraries
 library(tidyverse)
 ```
 
-
-Import Data and create city_state column:
+### Problem 1
+Import data, and create city_state column, exclude 4 cities, only include White & Black, ensure age is numeric:
 ```{r}
   homicides = read_csv("homicide-data.csv")|>
   janitor::clean_names()|>
-  mutate(city_state = str_c(city, state, sep = ","))
+  mutate(city_state = str_c(city, state, sep = ","),
+    solved = if_else(disposition == "Closed by arrest", 1, 0),
+        victim_age = as.numeric(victim_age)
+  ) |>
+  filter(!city_state %in% c("Dallas,TX", "Phoenix,AZ", "Kansas City,MO", "Tulsa,AL"))|>
+  filter(victim_race %in% c("White", "Black"))
 ```
 
