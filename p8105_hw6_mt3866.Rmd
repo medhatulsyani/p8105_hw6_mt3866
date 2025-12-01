@@ -82,3 +82,45 @@ ggplot(city_or_plot, aes(x = city_state, y = estimate)) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
+### Problem 2
+
+Import data
+```{r}
+library(p8105.datasets)
+data("weather_df")
+```
+
+Define linear function
+```{r}
+boot_stat = function(df) {
+  
+  fit = lm(tmax ~ tmin + prcp, data = df)
+  
+  r2 = glance(fit)$r.squared
+  
+  coefs = tidy(fit) |>
+    filter(term %in% c("tmin", "prcp")) 
+  
+  beta1 = coefs$estimate[coefs$term == "tmin"]
+  beta2 = coefs$estimate[coefs$term == "prcp"]
+  
+  ratio = beta1 / beta2
+  
+  tibble(r2 = r2, beta_ratio = ratio)
+}
+
+```
+
+Run 5,000 bootstrap samples
+```{r}
+bootstrap_results = tibble(i = 1:5000) |>
+  mutate(
+    sample = map(i, ~ sample_frac(weather_df, replace = TRUE)),
+    stats = map(sample, boot_stat)
+  ) |>
+  select(stats) |>
+  unnest(stats)
+```
+
+```
+
