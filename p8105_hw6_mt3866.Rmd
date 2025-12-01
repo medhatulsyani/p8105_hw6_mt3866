@@ -7,6 +7,7 @@ date: "2025-11-17"
 Load libraries
 ```{r}
 library(tidyverse)
+library(broom)
 ```
 
 ### Problem 1
@@ -20,5 +21,64 @@ Import data, and create city_state column, exclude 4 cities, only include White 
   ) |>
   filter(!city_state %in% c("Dallas,TX", "Phoenix,AZ", "Kansas City,MO", "Tulsa,AL"))|>
   filter(victim_race %in% c("White", "Black"))
+```
+
+Use glm to fit logistic regression, obtain adjusted OR:
+```{r}
+baltimore_lr = homicides |>
+  filter(city_state == "Baltimore,MD")
+
+balt_model = glm(
+  solved ~ victim_age + victim_sex + victim_race,
+  data = baltimore_lr,
+  family = binomial
+)
+
+balt_tidy = tidy(balt_model, exponentiate = TRUE, conf.int = TRUE)
+balt_tidy
+
+balt_or_for_male <- balt_tidy |>
+  filter(term == "victim_sexMale")
+
+balt_or_for_male
+```
+
+Model for all cities, extract adjusted OR:
+```{r}
+city_models = homicides |>
+  group_by(city_state) |>
+  nest() |>
+  mutate(
+    model = map(data, ~ glm(
+      solved ~ victim_age + victim_sex + victim_race,
+      data = .x,
+      family = binomial
+    )),
+    results = map(model, ~ tidy(.x, exponentiate = TRUE, conf.int = TRUE))
+  ) |>
+  unnest(results)
+
+city_or = city_models |>
+  filter(term == "victim_sexMale") |>
+  select(city_state, estimate, conf.low, conf.high)
+
+city_or
+```
+
+Plot showing OR and CI for each city
+```{r}
+city_or_plot = city_or |>
+  arrange(estimate) |>
+  mutate(city_state = factor(city_state, levels = city_state))
+
+ggplot(city_or_plot, aes(x = city_state, y = estimate)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0) +
+  labs(
+    title = "Adjusted Odds of Solved Homicides for Male vs Female Victims",
+    x = "City",
+    y = "Adjusted OR for Male vs Female Victimes"
+  ) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
