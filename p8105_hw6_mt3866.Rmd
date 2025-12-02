@@ -78,10 +78,12 @@ ggplot(city_or_plot, aes(x = city_state, y = estimate)) +
   labs(
     title = "Adjusted Odds of Solved Homicides for Male vs Female Victims",
     x = "City",
-    y = "Adjusted OR for Male vs Female Victimes"
+    y = "Adjusted OR for Male vs Female Victims"
   ) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
+
+Comment: The widest 95% CI for the adjusted odds ratio is for the city Albuquerque, NM while the smallest 95% CI for the adjusted odds ratio is for Chicago, IL. The confidence intervals vary widely between the different cities. The city with the highest adjusted odds ratio of solved homicides for males compared to females is in Albuquerque, NM, while the second highest is in Stockton, CA, and the third highest is Fresno, CA. 
 
 ### Problem 2
 
@@ -135,6 +137,8 @@ bootstrap_results |>
   geom_density() +
   labs(title = "Bootstrap Distribution of Beta 1 / Beta 2")
 ```
+Description: The bootstrap distribution of Beta 1/Beta 2 is left skewed, while the bootstrap distribution of R squared is in the shape of a bell curve.
+
 
 Compute 95% CI
 ```{r}
@@ -151,4 +155,90 @@ bootstrap_results |>
   )
 ```
 
+### Problem 3
+
+Import and clean data
+```{r}
+bw_df = read_csv("birthweight.csv") |>
+  mutate(
+    babysex = factor(babysex),
+    frace   = factor(frace),
+    mrace   = factor(mrace),
+    malform = factor(malform),
+    babysex = factor(babysex, labels = c("male", "female"))
+    )|>
+  janitor::clean_names()
+```
+
+Proposed model
+```{r}
+proposed_model = lm(
+  bwt ~ gaweeks + fincome + smoken + pnumlbw + momage,
+  data = bw_df
+)
+summary(proposed_model)
+```
+
+I decided to include these variables in my model because after researching things that may be associated with low birth weight in babies, I found that gestational age in weeks, socioeconomic status, smoking history, preview number of low birthweight babies, and the mom's age are related. Therefore, I included these factors in my model.
+
+Plot of model residuals against fitted values
+```{r}
+bw_df |>
+  add_predictions(proposed_model) |>
+  add_residuals(proposed_model) |>
+  ggplot(aes(x = pred, y = resid)) +
+  geom_point(alpha = 0.4) +
+  labs(title = "Residuals vs Fitted Values Proposed Model")
+```
+
+Comparison models
+```{r}
+mod_1 = lm(bwt ~ blength + gaweeks, data = bw_df)
+
+mod_2 = lm(
+  bwt ~ bhead * blength * babysex,
+  data = bw_df
+)
+```
+
+Cross validation
+```{r}
+cv_df = 
+  crossv_mc(bw_df, n = 100) |>
+  mutate(
+    train = map(train, as_tibble),
+    test = map(test, as_tibble)
+  )
+```
+
+Fit all 3
+```{r}
+cv_results = cv_df |>
+  mutate(
+    mod_0   = map(train, \(df) lm(bwt ~ gaweeks + fincome + smoken + pnumlbw + momage, data = df)),
+    mod_1    = map(train, \(df) lm(bwt ~ blength + gaweeks, data = df)),
+    mod_2    = map(train, \(df) lm(bwt ~ bhead * blength * babysex, data = df))
+  ) |>
+  mutate(
+    rmse_0 = map2_dbl(mod_0, test, rmse),
+    rmse_1  = map2_dbl(mod_1, test, rmse),
+    rmse_2  = map2_dbl(mod_2, test, rmse)
+  )
+```
+
+Violin plots to compare cross validation prediction error
+```{r}
+cv_results |>
+  select(starts_with("rmse")) |>
+  pivot_longer(
+    everything(),
+    names_to = "model",
+    values_to = "rmse",
+    names_prefix = "rmse_"
+  ) |>
+  ggplot(aes(x = model, y = rmse)) +
+  geom_violin() +
+  labs(title = "Cross-validated RMSE for Birthweight Models")
+
+```
 
