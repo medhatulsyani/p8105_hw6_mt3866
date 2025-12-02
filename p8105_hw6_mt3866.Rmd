@@ -140,7 +140,7 @@ bootstrap_results |>
 Description: The bootstrap distribution of Beta 1/Beta 2 is left skewed, while the bootstrap distribution of R squared is in the shape of a bell curve.
 
 
-Compute 95% CI
+Identify quantiles, compute 95% CI
 ```{r}
 bootstrap_results |>
   summarize(
