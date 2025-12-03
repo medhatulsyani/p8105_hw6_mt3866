@@ -17,8 +17,8 @@ Import data, and create city_state column, exclude 4 cities, only include White 
   homicides = read_csv("homicide-data.csv")|>
   janitor::clean_names()|>
   mutate(city_state = str_c(city, state, sep = ","),
-    solved = if_else(disposition == "Closed by arrest", 1, 0),
-        victim_age = as.numeric(victim_age)
+    solved = as.numeric(disposition == "Closed by arrest"),
+    victim_age = as.numeric(victim_age)
   ) |>
   filter(!city_state %in% c("Dallas,TX", "Phoenix,AZ", "Kansas City,MO", "Tulsa,AL"))|>
   filter(victim_race %in% c("White", "Black"))
@@ -35,13 +35,15 @@ balt_model = glm(
   family = binomial
 )
 
-balt_tidy = tidy(balt_model, exponentiate = TRUE, conf.int = TRUE)
-balt_tidy
-
-balt_or_for_male <- balt_tidy |>
-  filter(term == "victim_sexMale")
-
-balt_or_for_male
+balt_model |>
+  broom::tidy(conf.int = TRUE) |>
+  filter(term == "victim_sexMale") |>
+  mutate(odds_ratio = exp(estimate),
+         conf_low = exp(conf.low),
+         conf_high = exp(conf.high)) |>
+  select(odds_ratio, conf_low, conf_high) |>
+  knitr::kable(digits=3)
+balt_model
 ```
 
 Model for all cities, extract adjusted OR:
@@ -55,26 +57,28 @@ city_models = homicides |>
       data = .x,
       family = binomial
     )),
-    results = map(model, ~ tidy(.x, exponentiate = TRUE, conf.int = TRUE))
-  ) |>
-  unnest(results)
+    tidied = map(model, ~ broom::tidy(.x, conf.int = TRUE))
+    ) |>
+      unnest(tidied) |>
+      filter (term == "victim_sexMale")|>
+      mutate(odds_ratio = exp(estimate),
+            conf_low = exp(conf.low),
+            conf_high = exp(conf.high)
+            ) |>
+      select(city_state, odds_ratio, conf_low, conf_high)
 
-city_or = city_models |>
-  filter(term == "victim_sexMale") |>
-  select(city_state, estimate, conf.low, conf.high)
-
-city_or
+city_models
 ```
 
 Plot showing OR and CI for each city
 ```{r}
-city_or_plot = city_or |>
-  arrange(estimate) |>
+city_or_plot = city_models |>
+  arrange(odds_ratio) |>
   mutate(city_state = factor(city_state, levels = city_state))
 
-ggplot(city_or_plot, aes(x = city_state, y = estimate)) +
+ggplot(city_or_plot, aes(x = city_state, y = odds_ratio)) +
   geom_point() +
-  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0) +
+  geom_errorbar(aes(ymin = conf_low, ymax = conf_high), width = 0) +
   labs(
     title = "Adjusted Odds of Solved Homicides for Male vs Female Victims",
     x = "City",
