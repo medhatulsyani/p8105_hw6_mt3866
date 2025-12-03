@@ -87,7 +87,7 @@ ggplot(city_or_plot, aes(x = city_state, y = odds_ratio)) +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-Comment: The widest 95% CI for the adjusted odds ratio is for the city Albuquerque, NM while the smallest 95% CI for the adjusted odds ratio is for Chicago, IL. The confidence intervals vary widely between the different cities. The city with the highest adjusted odds ratio of solved homicides for males compared to females is in Albuquerque, NM, while the second highest is in Stockton, CA, and the third highest is Fresno, CA. 
+Comment: The widest 95% CI for the adjusted odds ratio is for the city Albuquerque, NM while the smallest 95% CI for the adjusted odds ratio is for Chicago, IL. The confidence intervals vary widely between the different cities. The city with the highest adjusted odds ratio of solved homicides for males compared to females is in Albuquerque, NM, while the second highest is tied between Fresno, CA, and Stockton, CA. 
 
 ### Problem 2
 
